@@ -13,7 +13,8 @@ dp_factor = 4;
 gaussian_noise_std = 1;
 mov_lr = gen_lr_video(mov_raw, blur_kernel, dp_factor, gaussian_noise_std);
 
-
+% Bicubic interpolation
+mov_bic = imresize(mov_lr, dp_factor);
 
 
 function mov_raw = preprocess_video(mov_color_struct, num_frame)
