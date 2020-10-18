@@ -16,7 +16,7 @@ mov_lr = gen_lr_video(mov_raw, blur_kernel, dp_factor, gaussian_noise_std);
 % Bicubic interpolation
 mov_bic = imresize(mov_lr, dp_factor);
 
-% Super resolution optimization
+% Super resolution optimization tested
 [H, mov_lex] = gen_H(mov_bic, blur_kernel);
 
 
