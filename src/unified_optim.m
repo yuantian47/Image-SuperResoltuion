@@ -29,7 +29,7 @@ function mov_raw = preprocess_video(mov_color_struct, num_frame)
 end
 
 function mov_lr = gen_lr_video(mov_raw, blur_kernel, dp_factor, noise_std)
-    mov_blur = imfilter(mov_raw, blur_kernel, 'symmetric', 'same', 'conv');
+    mov_blur = imfilter(mov_raw, blur_kernel, 'same', 'conv');
     mov_dp = mov_blur(1:dp_factor:end, 1:dp_factor:end, :);
     mov_lr = rescale(imnoise(rescale(mov_dp), 'gaussian', 0, ...
         noise_std/255.0), 0, 255);
@@ -42,7 +42,6 @@ function [H, mov_lex] = gen_H(mov, kernel)
     x = -(ke_size(1) - 1)/2 : (ke_size(1) - 1)/2;
     y = -(ke_size(2) - 1)/2 : (ke_size(2) - 1)/2;
     [ker_x, ker_y]= meshgrid(x, y);
-%     H = sparse(mov_size(1)*mov_size(2), mov_size(1)*mov_size(2));
     mov_lex = zeros(mov_size(1) * mov_size(2), mov_size(3));
     H_row = 1;
     row_idx = [];
@@ -56,26 +55,18 @@ function [H, mov_lex] = gen_H(mov, kernel)
                    col = ker_x(k, l) + j;
                    if col < 0
                        continue
-                       col = -col;
                    elseif col + 1 > mov_size(2)
                        continue
-                       col = 2 * mov_size(2) - col;
                    end
                    row = ker_y(k, l) + i;
                    if row < 0
                        continue
-                       row = -row;
                    elseif row + 1 > mov_size(1)
-                       continue
-                       row = 2 * mov_size(1) - row; 
+                       continue 
                    end
                    row_idx(end + 1) = H_row;
                    col_idx(end + 1) = (row + 1) + col*mov_size(1);
                    val(end + 1) = conv_kernel(k, l);
-%                    disp([(col + 1) + row*mov_size(2), col, row]);
-%                    H(H_row, (row + 1) + col*mov_size(1)) = ...
-%                        H(H_row, (row + 1) + col*mov_size(1)) + ...
-%                        conv_kernel(k, l);
                 end
             end
             H_row = H_row + 1;
