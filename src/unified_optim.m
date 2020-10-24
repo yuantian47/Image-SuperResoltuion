@@ -19,6 +19,7 @@ mov_bic = imresize(mov_lr, dp_factor);
 % Super resolution optimization tested
 [H, mov_lex] = gen_H(mov_bic, blur_kernel);
 S = gen_S(mov_bic, dp_factor);
+L = (1/(gaussian_noise_std^2)) * transpose(S*H) * (S*H);
 
 
 function mov_raw = preprocess_video(mov_color_struct, num_frame)
