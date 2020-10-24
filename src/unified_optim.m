@@ -73,7 +73,8 @@ function [H, mov_lex] = gen_H(mov, kernel)
             H_row = H_row + 1;
         end
     end
-    H = sparse(row_idx, col_idx, val);
+    H = sparse(row_idx, col_idx, val, ...
+        mov_size(1)*mov_size(2), mov_size(1)*mov_size(2));
 end
 
 function S = gen_S(mov, dp_factor)
@@ -88,15 +89,16 @@ function S = gen_S(mov, dp_factor)
     row_idx = [];
     col_idx = [];
     val = [];
-    for i = 1:mov_size(1)
-        for j = 1:mov_size(2)
+    for j = 1:mov_size(2)
+        for i = 1:mov_size(1)
             if X(i, j) == 1 && Y(i, j) == 1
-                row_idx(end + 1) = i + (j-1)*mov_size(1);
+                val_len = size(val);
+                row_idx(end + 1) = val_len(2) + 1;
                 col_idx(end + 1) = i + (j-1)*mov_size(1);
                 val(end + 1) = 1;
             end
         end
     end
     S = sparse(row_idx, col_idx, val, ...
-        mov_size(1)*mov_size(2), mov_size(1)*mov_size(2));
+        mov_size(1)*mov_size(2)/dp_factor^2, mov_size(1)*mov_size(2));
 end
