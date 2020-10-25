@@ -1,10 +1,6 @@
 close all;
 clear;
 
-a = [1, 4, 7, 2, 5, 8, 3, 6, 9];
-a = transpose([a; a]);
-a_m = inverse_lex(a, [3, 3]);
-
 % Get raw image
 video_name = "../data/noise_free/gforeman.avi";
 num_frame = 25;
@@ -21,14 +17,28 @@ mov_bic = imresize(mov_lr, dp_factor);
 
 % Super resolution optimization tested
 rou = 0.0001;
+beta = 0.2048;
+alpha = 1.2;
+
+test_kernel = fspecial('gaussian', [3, 3], 1.5);
+[H, ~] = gen_H(mov_bic(1:5, 1:5, :), test_kernel);
+H_full = full(H);
+
 [H, mov_lex] = gen_H(mov_bic, blur_kernel);
+
+mov_lex = lex_transform(rescale(mov_raw));
+mov_lex_blur = H * mov_lex;
+mov_back = inverse_lex(mov_lex, size(mov_raw));
+imshow(mov_back(:, :, 10));
+
 x = mov_lex;
 v = mov_lex;
 u = zeros(size(v));
 y = lex_transform(mov_lr);
+dual_gap = 0;
 S = gen_S(mov_bic, dp_factor);
 L = (1/(gaussian_noise_std^2)) * transpose(S*H) * (S*H);
-iter = 1;
+iter = 40;
 for i = 1:iter
     x_size = size(x);
     x_new = zeros(x_size);
@@ -37,9 +47,24 @@ for i = 1:iter
         A = L + rou*speye(size(L));
         b = (1/(gaussian_noise_std^2)) * transpose(S*H) * y(:, j) + ...
             rou * (v(:, j) - u(:, j));
-        x_new(:, j) = pcg(A, b, 1e-6, 30);
+        x_new(:, j) = pcg(A, b, 1e-6, 40);
     end
     x = x_new;
+    x_raw = inverse_lex(x, size(mov_bic));
+    u_raw = inverse_lex(u, size(mov_bic));
+    v_old = v;
+    [~, v_raw] = VBM3D(x_raw + u_raw, sqrt(beta/rou));
+    v = double(lex_transform(v_raw));
+    dual_gap_new = norm(v - v_old)^2;
+    if dual_gap_new <= dual_gap
+        rou_new = alpha * rou
+    else
+        rou_new = rou;
+    end
+    dual_gap = dual_gap_new;
+    u = (rou/rou_new)*(u + x - v);
+    rou = rou_new;
+    i
 end
 
 
