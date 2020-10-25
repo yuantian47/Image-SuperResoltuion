@@ -2,10 +2,9 @@ close all;
 clear;
 
 % Get raw image
-video_name = "../data/foreman_qcif.y4m";
-[mov_color_struct, mov_info] = yuv4mpeg2mov(video_name);
-num_frame = 30;
-mov_raw = preprocess_video(mov_color_struct, num_frame);
+video_name = "../data/noise_free/gforeman.avi";
+num_frame = 5;
+mov_raw = preprocess_video(video_name, num_frame);
 
 % Blur, downsample, and add noise
 blur_kernel = fspecial('gaussian', [7 7], 1.5);
@@ -17,7 +16,7 @@ mov_lr = gen_lr_video(mov_raw, blur_kernel, dp_factor, gaussian_noise_std);
 mov_bic = imresize(mov_lr, dp_factor);
 
 % Super resolution optimization tested
-rou = 0;
+rou = 0.0001;
 [H, mov_lex] = gen_H(mov_bic, blur_kernel);
 x = mov_lex;
 v = mov_lex;
@@ -40,11 +39,13 @@ for i = 1:iter
 end
 
 
-function mov_raw = preprocess_video(mov_color_struct, num_frame)
-    video_size = size(mov_color_struct(1).cdata);
-    mov_raw = zeros(video_size(1), video_size(2), num_frame);
-    for i = 1:num_frame
-        mov_raw(:, :, i) = rgb2gray(mov_color_struct(i).cdata);
+function mov_raw = preprocess_video(video_name, num_frame)
+    video_class = VideoReader(video_name);
+    video = read(video_class);
+    mov_raw = zeros([video_class.Height, video_class.Width, ...
+        num_frame], 'uint8');
+    for cf = 1:num_frame
+        mov_raw(:,:,cf) = video(:, :, 1, cf);
     end
 end
 
