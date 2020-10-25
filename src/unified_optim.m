@@ -1,6 +1,10 @@
 close all;
 clear;
 
+a = [1, 4, 7, 2, 5, 8, 3, 6, 9];
+a = transpose([a; a]);
+a_m = inverse_lex(a, [3, 3]);
+
 % Get raw image
 video_name = "../data/noise_free/gforeman.avi";
 num_frame = 25;
@@ -33,7 +37,7 @@ for i = 1:iter
         A = L + rou*speye(size(L));
         b = (1/(gaussian_noise_std^2)) * transpose(S*H) * y(:, j) + ...
             rou * (v(:, j) - u(:, j));
-        x_new(:, j) = pcg(A, b);
+        x_new(:, j) = pcg(A, b, 1e-6, 30);
     end
     x = x_new;
 end
@@ -131,3 +135,19 @@ function mov_lex = lex_transform(mov)
         end
      end
 end
+
+function non_lex = inverse_lex(lex, im_size)
+    lex_size = size(lex);
+    non_lex = zeros([im_size(1), im_size(2), lex_size(2)], 'double');
+    for i = 1:lex_size(1)
+        row = rem(i, im_size(1));
+        col = fix(i/im_size(1))+1;
+        if row == 0
+            row = 3;
+            col = col - 1;
+        end
+        non_lex(row, col, :) = lex(i, :);
+    end
+end
+
+
