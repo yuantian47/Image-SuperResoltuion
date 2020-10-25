@@ -19,18 +19,7 @@ mov_bic = imresize(mov_lr, dp_factor);
 rou = 0.0001;
 beta = 0.2048;
 alpha = 1.2;
-
-test_kernel = fspecial('gaussian', [3, 3], 1.5);
-[H, ~] = gen_H(mov_bic(1:5, 1:5, :), test_kernel);
-H_full = full(H);
-
 [H, mov_lex] = gen_H(mov_bic, blur_kernel);
-
-mov_lex = lex_transform(rescale(mov_raw));
-mov_lex_blur = H * mov_lex;
-mov_back = inverse_lex(mov_lex, size(mov_raw));
-imshow(mov_back(:, :, 10));
-
 x = mov_lex;
 v = mov_lex;
 u = zeros(size(v));
@@ -67,6 +56,14 @@ for i = 1:iter
     i
 end
 
+new_video_name = '../data/vsr.avi';
+new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
+open(new_video);
+for i = 1:x_size(2)
+    writeVideo(new_video, v_raw(:, :, i))
+end
+close(new_video);
+
 
 function mov_raw = preprocess_video(video_name, num_frame)
     video_class = VideoReader(video_name);
@@ -96,8 +93,8 @@ function [H, mov_lex] = gen_H(mov, kernel)
     row_idx = [];
     col_idx = [];
     val = [];
-    for i = 0:mov_size(1)-1
-        for j = 0:mov_size(2)-1
+    for j = 0:mov_size(2)-1
+        for i = 0:mov_size(1)-1
             mov_lex((i+1) + j*mov_size(1), :) = mov(i+1, j+1, :);
             for k = 1:ke_size(1)
                 for l = 1:ke_size(2)
