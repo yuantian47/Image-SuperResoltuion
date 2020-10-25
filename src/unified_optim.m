@@ -3,7 +3,7 @@ clear;
 
 % Get raw image
 video_name = "../data/noise_free/gforeman.avi";
-num_frame = 5;
+num_frame = 25;
 mov_raw = preprocess_video(video_name, num_frame);
 
 % Blur, downsample, and add noise
@@ -30,7 +30,7 @@ for i = 1:iter
     x_new = zeros(x_size);
     for j = 1:x_size(2)
         % A*x = b
-        A = L + rou*eye(size(L));
+        A = L + rou*speye(size(L));
         b = (1/(gaussian_noise_std^2)) * transpose(S*H) * y(:, j) + ...
             rou * (v(:, j) - u(:, j));
         x_new(:, j) = pcg(A, b);
@@ -52,8 +52,7 @@ end
 function mov_lr = gen_lr_video(mov_raw, blur_kernel, dp_factor, noise_std)
     mov_blur = imfilter(mov_raw, blur_kernel, 'same', 'conv');
     mov_dp = mov_blur(1:dp_factor:end, 1:dp_factor:end, :);
-    mov_lr = rescale(imnoise(rescale(mov_dp), 'gaussian', 0, ...
-        noise_std/255.0), 0, 255);
+    mov_lr = imnoise(rescale(mov_dp), 'gaussian', 0, noise_std/255.0);
 end
 
 function [H, mov_lex] = gen_H(mov, kernel)
