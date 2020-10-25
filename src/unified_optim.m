@@ -17,9 +17,27 @@ mov_lr = gen_lr_video(mov_raw, blur_kernel, dp_factor, gaussian_noise_std);
 mov_bic = imresize(mov_lr, dp_factor);
 
 % Super resolution optimization tested
+rou = 0;
 [H, mov_lex] = gen_H(mov_bic, blur_kernel);
+x = mov_lex;
+v = mov_lex;
+u = zeros(size(v));
+y = lex_transform(mov_lr);
 S = gen_S(mov_bic, dp_factor);
 L = (1/(gaussian_noise_std^2)) * transpose(S*H) * (S*H);
+iter = 1;
+for i = 1:iter
+    x_size = size(x);
+    x_new = zeros(x_size);
+    for j = 1:x_size(2)
+        % A*x = b
+        A = L + rou*eye(size(L));
+        b = (1/(gaussian_noise_std^2)) * transpose(S*H) * y(:, j) + ...
+            rou * (v(:, j) - u(:, j));
+        x_new(:, j) = pcg(A, b);
+    end
+    x = x_new;
+end
 
 
 function mov_raw = preprocess_video(mov_color_struct, num_frame)
@@ -102,4 +120,14 @@ function S = gen_S(mov, dp_factor)
     end
     S = sparse(row_idx, col_idx, val, ...
         mov_size(1)*mov_size(2)/dp_factor^2, mov_size(1)*mov_size(2));
+end
+
+function mov_lex = lex_transform(mov)
+    mov_size = size(mov);
+    mov_lex = zeros(mov_size(1) * mov_size(2), mov_size(3));
+     for i = 0:mov_size(1)-1
+        for j = 0:mov_size(2)-1
+            mov_lex((i+1) + j*mov_size(1), :) = mov(i+1, j+1, :);
+        end
+     end
 end
