@@ -89,7 +89,7 @@ end
 function mov_lr = gen_lr_video(mov_raw, blur_kernel, dp_factor, noise_std)
     mov_blur = imfilter(mov_raw, blur_kernel, 'same', 'conv');
     mov_dp = mov_blur(1:dp_factor:end, 1:dp_factor:end, :);
-    mov_lr = imnoise(rescale(mov_dp), 'gaussian', 0, noise_std/255.0);
+    mov_lr = imnoise(rescale(mov_dp), 'gaussian', 0, (noise_std/255)^2);
 end
 
 function [H, mov_lex] = gen_H(mov, kernel)
