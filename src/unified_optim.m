@@ -3,7 +3,7 @@ clear;
 
 % Get raw image
 video_name = "../data/noise_free/gforeman.avi";
-num_frame = 25;
+num_frame = 250;
 mov_raw = preprocess_video(video_name, num_frame);
 
 % Blur, downsample, and add noise
