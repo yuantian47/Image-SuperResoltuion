@@ -42,7 +42,18 @@ for i = 1:iter
     x_raw = inverse_lex(x, size(mov_bic));
     u_raw = inverse_lex(u, size(mov_bic));
     v_old = v;
-    [~, v_raw] = VBM3D(x_raw + u_raw, sqrt(beta/rou));
+    
+    % PPP
+    % [~, v_raw] = VBM3D(x_raw + u_raw, sqrt(beta/rou));
+    
+    % RED
+    z = inverse_lex(v, size(mov_bic));
+    for k = 1:2
+        [~, denoise] = VBM3D(z, sqrt(beta/rou));
+        z = (1/(beta + rou)) * (beta*denoise + rou * (x_raw + u_raw));
+    end
+    v_raw = z;
+    
     v = double(lex_transform(v_raw));
     dual_gap_new = norm(v - v_old)^2;
     if dual_gap_new <= dual_gap
@@ -60,7 +71,7 @@ new_video_name = '../data/vsr.avi';
 new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
 open(new_video);
 for i = 1:x_size(2)
-    writeVideo(new_video, v_raw(:, :, i))
+    writeVideo(new_video, rescale(v_raw(:, :, i)))
 end
 close(new_video);
 
