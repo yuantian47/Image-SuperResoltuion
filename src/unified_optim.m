@@ -3,21 +3,21 @@ clear;
 
 % Get raw image
 video_name = "../data/noise_free/gforeman.avi";
-num_frame = 250;
+num_frame = 25;
 mov_raw = preprocess_video(video_name, num_frame);
 
 % Blur, downsample, and add noise
 blur_kernel = fspecial('gaussian', [7 7], 1.5);
 dp_factor = 4;
-gaussian_noise_std = 1;
+gaussian_noise_std = 1.0;
 mov_lr = gen_lr_video(mov_raw, blur_kernel, dp_factor, gaussian_noise_std);
 
 % Bicubic interpolation
-mov_bic = imresize(mov_lr, dp_factor);
+mov_bic = imresize(mov_lr, dp_factor, 'bicubic');
 
 % Super resolution optimization tested
 rou = 0.0001;
-beta = 0.2048;
+beta = 0.2048/5;
 alpha = 1.2;
 [H, mov_lex] = gen_H(mov_bic, blur_kernel);
 x = mov_lex;
@@ -36,7 +36,7 @@ for i = 1:iter
         A = L + rou*speye(size(L));
         b = (1/(gaussian_noise_std^2)) * transpose(S*H) * y(:, j) + ...
             rou * (v(:, j) - u(:, j));
-        x_new(:, j) = pcg(A, b, 1e-6, 40);
+        x_new(:, j) = pcg(A, b, 1e-6, 30);
     end
     x = x_new;
     x_raw = inverse_lex(x, size(mov_bic));
@@ -67,7 +67,7 @@ for i = 1:iter
     i
 end
 
-new_video_name = '../data/vsr.avi';
+new_video_name = '../data/vsr_7_5.avi';
 new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
 open(new_video);
 for i = 1:x_size(2)
