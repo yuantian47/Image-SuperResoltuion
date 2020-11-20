@@ -4,88 +4,93 @@ clear;
 video_name = "gforeman";
 num_frame = 25;
 iter = 2;
+optimation_analysis(video_name, num_frame, iter);
 
-[mov_red, mov_bic, mov_raw] = video_sr(video_name, num_frame, iter, 'RED');
-[mov_ppp, ~, ~] = video_sr(video_name, num_frame, iter, 'PPP');
 
-psnr_red = psnr(double(mov_red(:, :, :)), rescale(mov_raw(:, :, :)));
-psnr_ppp = psnr(double(mov_ppp(:, :, :)), rescale(mov_raw(:, :, :)));
-psnr_bic = psnr(double(mov_bic(:, :, :)), rescale(mov_raw(:, :, :)));
-ssim_red = ssim(double(mov_red(:, :, :)), rescale(mov_raw(:, :, :)));
-ssim_ppp = ssim(double(mov_ppp(:, :, :)), rescale(mov_raw(:, :, :)));
-ssim_bic = ssim(double(mov_bic(:, :, :)), rescale(mov_raw(:, :, :)));
+function optimation_analysis(video_name, num_frame, iter)
+    [mov_red, mov_bic, mov_raw] = video_sr(video_name, num_frame,...
+        iter, 'RED');
+    [mov_ppp, ~, ~] = video_sr(video_name, num_frame, iter, 'PPP');
 
-if ~exist("../data/results/" + video_name + int2str(iter) + "/", 'dir')
-   mkdir("../data/results/" + video_name + int2str(iter) + "/")
+    psnr_red = psnr(double(mov_red(:, :, :)), rescale(mov_raw(:, :, :)));
+    psnr_ppp = psnr(double(mov_ppp(:, :, :)), rescale(mov_raw(:, :, :)));
+    psnr_bic = psnr(double(mov_bic(:, :, :)), rescale(mov_raw(:, :, :)));
+    ssim_red = ssim(double(mov_red(:, :, :)), rescale(mov_raw(:, :, :)));
+    ssim_ppp = ssim(double(mov_ppp(:, :, :)), rescale(mov_raw(:, :, :)));
+    ssim_bic = ssim(double(mov_bic(:, :, :)), rescale(mov_raw(:, :, :)));
+
+    if ~exist("../data/results/" + video_name + int2str(iter) + "/", 'dir')
+       mkdir("../data/results/" + video_name + int2str(iter) + "/")
+    end
+
+    save("../data/results/" + video_name + int2str(iter) + "/red.mat",...
+        'mov_red');
+    save("../data/results/" + video_name + int2str(iter) + "/ppp.mat",...
+        'mov_ppp');
+    save("../data/results/" + video_name + int2str(iter) + "/bic.mat",...
+        'mov_bic');
+    save("../data/results/" + video_name + int2str(iter) + "/raw.mat",...
+        'mov_raw');
+
+    frame_idx = 1:num_frame;
+    psnr_bic_arr = zeros(1, num_frame);
+    psnr_red_arr = zeros(1, num_frame);
+    psnr_ppp_arr = zeros(1, num_frame);
+    ssim_bic_arr = zeros(1, num_frame);
+    ssim_red_arr = zeros(1, num_frame);
+    ssim_ppp_arr = zeros(1, num_frame);
+    for i = 1:num_frame
+        psnr_red_arr(i) = psnr(double(mov_red(:, :, i)),...
+            rescale(mov_raw(:, :, i)));
+        psnr_ppp_arr(i) = psnr(double(mov_ppp(:, :, i)),...
+            rescale(mov_raw(:, :, i)));
+        psnr_bic_arr(i) = psnr(double(mov_bic(:, :, i)),...
+            rescale(mov_raw(:, :, i)));
+        ssim_red_arr(i) = ssim(double(mov_red(:, :, i)),...
+            rescale(mov_raw(:, :, i)));
+        ssim_ppp_arr(i) = ssim(double(mov_ppp(:, :, i)),...
+            rescale(mov_raw(:, :, i)));
+        ssim_bic_arr(i) = ssim(double(mov_bic(:, :, i)),...
+            rescale(mov_raw(:, :, i)));
+    end
+
+    fig_psnr = figure(1);
+    plot(frame_idx, psnr_red_arr, 'r-o', ...
+        frame_idx, psnr_ppp_arr, 'g-*', ...
+        frame_idx, psnr_bic_arr, 'b-^');
+    legend('RED', 'PPP', 'Bicubic');
+    title(video_name + " PSNR");
+    saveas(fig_psnr, "../data/results/" + ...
+        video_name + int2str(iter) + "/psnr_plot.png")
+    savefig(fig_psnr, "../data/results/" + ...
+        video_name + int2str(iter) + "/psnr_plot.fig")
+
+    fig_ssim = figure(2);
+    plot(frame_idx, ssim_red_arr, 'r-o', ...
+        frame_idx, ssim_ppp_arr, 'g-*', ...
+        frame_idx, ssim_bic_arr, 'b-^');
+    legend('RED', 'PPP', 'Bicubic');
+    title(video_name + " SSIM");
+    saveas(fig_ssim, "../data/results/" + ...
+        video_name + int2str(iter) + "/ssim_plot.png")
+    savefig(fig_ssim, "../data/results/" + ...
+        video_name + int2str(iter) + "/ssim_plot.fig")
+
+    performance = [psnr_red psnr_ppp psnr_bic; ssim_red ssim_ppp ssim_bic];
+    writematrix(performance, ...
+        "../data/results/" + video_name + int2str(iter) + "/performance.csv")
+
+    new_video_name = "../data/results/" + ...
+        video_name + int2str(iter) + "/joint_mov" + ".avi";
+    new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
+    open(new_video);
+    for i = 1:num_frame
+    writeVideo(new_video, [rescale(mov_raw(:, :, i)),...
+        rescale(mov_bic(:, :, i)); rescale(double(mov_red(:, :, i))),...
+        rescale(double(mov_ppp(:, :, i)))])
+    end
+    close(new_video);
 end
-
-save("../data/results/" + video_name + int2str(iter) + "/red.mat",...
-    'mov_red');
-save("../data/results/" + video_name + int2str(iter) + "/ppp.mat",...
-    'mov_ppp');
-save("../data/results/" + video_name + int2str(iter) + "/bic.mat",...
-    'mov_bic');
-save("../data/results/" + video_name + int2str(iter) + "/raw.mat",...
-    'mov_raw');
-
-frame_idx = 1:num_frame;
-psnr_bic_arr = zeros(1, num_frame);
-psnr_red_arr = zeros(1, num_frame);
-psnr_ppp_arr = zeros(1, num_frame);
-ssim_bic_arr = zeros(1, num_frame);
-ssim_red_arr = zeros(1, num_frame);
-ssim_ppp_arr = zeros(1, num_frame);
-for i = 1:num_frame
-    psnr_red_arr(i) = psnr(double(mov_red(:, :, i)),...
-        rescale(mov_raw(:, :, i)));
-    psnr_ppp_arr(i) = psnr(double(mov_ppp(:, :, i)),...
-        rescale(mov_raw(:, :, i)));
-    psnr_bic_arr(i) = psnr(double(mov_bic(:, :, i)),...
-        rescale(mov_raw(:, :, i)));
-    ssim_red_arr(i) = ssim(double(mov_red(:, :, i)),...
-        rescale(mov_raw(:, :, i)));
-    ssim_ppp_arr(i) = ssim(double(mov_ppp(:, :, i)),...
-        rescale(mov_raw(:, :, i)));
-    ssim_bic_arr(i) = ssim(double(mov_bic(:, :, i)),...
-        rescale(mov_raw(:, :, i)));
-end
-
-fig_psnr = figure(1);
-p = plot(frame_idx, psnr_red_arr, 'r-o', ...
-    frame_idx, psnr_ppp_arr, 'g-*', ...
-    frame_idx, psnr_bic_arr, 'b-^');
-legend('RED', 'PPP', 'Bicubic');
-title(video_name + " PSNR");
-saveas(fig_psnr, "../data/results/" + ...
-    video_name + int2str(iter) + "/psnr_plot.png")
-savefig(fig_psnr, "../data/results/" + ...
-    video_name + int2str(iter) + "/psnr_plot.fig")
-
-fig_ssim = figure(2);
-p = plot(frame_idx, ssim_red_arr, 'r-o', ...
-    frame_idx, ssim_ppp_arr, 'g-*', ...
-    frame_idx, ssim_bic_arr, 'b-^');
-legend('RED', 'PPP', 'Bicubic');
-title(video_name + " SSIM");
-saveas(fig_ssim, "../data/results/" + ...
-    video_name + int2str(iter) + "/ssim_plot.png")
-savefig(fig_ssim, "../data/results/" + ...
-    video_name + int2str(iter) + "/ssim_plot.fig")
-
-performance = [psnr_red psnr_ppp psnr_bic; ssim_red ssim_ppp ssim_bic];
-writematrix(performance, ...
-    "../data/results/" + video_name + int2str(iter) + "/performance.csv")
-
-new_video_name = "../data/results/" + ...
-    video_name + int2str(iter) + "/joint_mov" + ".avi";
-new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
-open(new_video);
-for i = 1:num_frame
-writeVideo(new_video, [rescale(mov_raw(:, :, i)),...
-    rescale(mov_bic(:, :, i)); rescale(double(mov_red(:, :, i))),...
-    rescale(double(mov_ppp(:, :, i)))])
-end
-close(new_video);
 
 
 function [v_raw, mov_bic, mov_raw] = video_sr(v_name, num_frame, iter, mth)
