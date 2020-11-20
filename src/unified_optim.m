@@ -1,10 +1,12 @@
 close all;
 clear;
 
-video_name = "gforeman";
+video_name_arr = ["gforeman", "gstennis"];
 num_frame = 25;
 iter = 2;
-optimation_analysis(video_name, num_frame, iter);
+parfor i = 1:size(video_name_arr, 2)
+    optimation_analysis(video_name_arr(i), num_frame, iter);
+end
 
 
 function optimation_analysis(video_name, num_frame, iter)
@@ -90,6 +92,8 @@ function optimation_analysis(video_name, num_frame, iter)
         rescale(double(mov_ppp(:, :, i)))])
     end
     close(new_video);
+    close(fig_psnr);
+    close(fig_ssim);
 end
 
 
