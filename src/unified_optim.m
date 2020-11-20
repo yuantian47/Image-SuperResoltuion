@@ -1,93 +1,90 @@
 close all;
 clear;
 
-% Get raw image
-video_name = "../data/noise_free/gforeman.avi";
-num_frame = 150;
-mov_raw = preprocess_video(video_name, num_frame);
+video_name = "gforeman";
+num_frame = 25;
+iter = 2;
 
-% Blur, downsample, and add noise
-blur_kernel = fspecial('gaussian', [7 7], 1.5);
-dp_factor = 4;
-gaussian_noise_std = 1.0;
-mov_lr = gen_lr_video(mov_raw, blur_kernel, dp_factor, gaussian_noise_std);
+[mov_opt, mov_bic, mov_raw] = video_sr(video_name, num_frame, iter);
 
-% Bicubic interpolation
-mov_bic = imresize(mov_lr, dp_factor, 'bicubic');
-
-
-new_video_name = '../data/gforeman_long_bic.avi';
-new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
-open(new_video);
-for i = 1:num_frame
-    writeVideo(new_video, rescale(mov_bic(:, :, i)))
-end
-close(new_video);
-
-
-% Super resolution optimization tested
-rou = 0.0001;
-beta = 0.004;
-alpha = 1.2;
-[H, mov_lex] = gen_H(mov_bic, blur_kernel);
-x = mov_lex;
-v = mov_lex;
-u = zeros(size(v));
-y = lex_transform(mov_lr);
-dual_gap = 0;
-S = gen_S(mov_bic, dp_factor);
-L = (1/(gaussian_noise_std^2)) * transpose(S*H) * (S*H);
-iter = 40;
-for i = 1:iter
-    x_size = size(x);
-    x_new = zeros(x_size);
-    for j = 1:x_size(2)
-        % A*x = b
-        A = L + rou*speye(size(L));
-        b = (1/(gaussian_noise_std^2)) * transpose(S*H) * y(:, j) + ...
-            rou * (v(:, j) - u(:, j));
-        x_new(:, j) = pcg(A, b, 1e-6, 30);
-    end
-    x = x_new;
-    x_raw = inverse_lex(x, size(mov_bic));
-    u_raw = inverse_lex(u, size(mov_bic));
-    v_old = v;
-    
-    % PPP
-    % [~, v_raw] = VBM3D(x_raw + u_raw, sqrt(beta/rou));
-    
-    % RED
-    z = inverse_lex(v, size(mov_bic));
-    for k = 1:2
-        [~, denoise] = VBM3D(z, sqrt(beta/rou));
-        z = (1/(beta + rou)) * (beta*denoise + rou * (x_raw + u_raw));
-    end
-    v_raw = z;
-    
-    v = double(lex_transform(v_raw));
-    dual_gap_new = norm(v - v_old)^2;
-    if dual_gap_new <= dual_gap
-        rou_new = alpha * rou
-    else
-        rou_new = rou;
-    end
-    dual_gap = dual_gap_new;
-    u = (rou/rou_new)*(u + x - v);
-    rou = rou_new;
-    i
-end
-
-new_video_name = '../data/gforeman_long_opt.avi';
-new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
-open(new_video);
-for i = 1:x_size(2)
-    writeVideo(new_video, rescale(v_raw(:, :, i)))
-end
-close(new_video);
-
-peaksnr_opt = psnr(double(v_raw(:, :, :)), rescale(mov_raw(:, :, :)));
+peaksnr_opt = psnr(double(mov_opt(:, :, :)), rescale(mov_raw(:, :, :)));
 peaksnr_bic = psnr(double(mov_bic(:, :, :)), rescale(mov_raw(:, :, :)));
 
+function [v_raw, mov_bic, mov_raw] = video_sr(v_name, num_frame, iter)
+    % Get raw image
+    video_name = "../data/noise_free/" + v_name + ".avi";
+    mov_raw = preprocess_video(video_name, num_frame);
+
+    % Blur, downsample, and add noise
+    blur_kernel = fspecial('gaussian', [7 7], 1.5);
+    dp_factor = 4;
+    gaussian_noise_std = 1.0;
+    mov_lr = gen_lr_video(mov_raw, blur_kernel, dp_factor, gaussian_noise_std);
+
+    % Bicubic interpolation
+    mov_bic = imresize(mov_lr, dp_factor, 'bicubic');
+
+    % Super resolution optimization tested
+    rou = 0.0001;
+    beta = 0.004;
+    alpha = 1.2;
+    [H, mov_lex] = gen_H(mov_bic, blur_kernel);
+    x = mov_lex;
+    v = mov_lex;
+    u = zeros(size(v));
+    y = lex_transform(mov_lr);
+    dual_gap = 0;
+    S = gen_S(mov_bic, dp_factor);
+    L = (1/(gaussian_noise_std^2)) * transpose(S*H) * (S*H);
+    for i = 1:iter
+        x_size = size(x);
+        x_new = zeros(x_size);
+        for j = 1:x_size(2)
+            % A*x = b
+            A = L + rou*speye(size(L));
+            b = (1/(gaussian_noise_std^2)) * transpose(S*H) * y(:, j) + ...
+                rou * (v(:, j) - u(:, j));
+            x_new(:, j) = pcg(A, b, 1e-6, 30);
+        end
+        x = x_new;
+        x_raw = inverse_lex(x, size(mov_bic));
+        u_raw = inverse_lex(u, size(mov_bic));
+        v_old = v;
+
+        % PPP
+        % [~, v_raw] = VBM3D(x_raw + u_raw, sqrt(beta/rou));
+
+        % RED
+        z = inverse_lex(v, size(mov_bic));
+        for k = 1:2
+            [~, denoise] = VBM3D(z, sqrt(beta/rou));
+            z = (1/(beta + rou)) * (beta*denoise + rou * (x_raw + u_raw));
+        end
+        v_raw = z;
+
+        v = double(lex_transform(v_raw));
+        dual_gap_new = norm(v - v_old)^2;
+        if dual_gap_new <= dual_gap
+            rou_new = alpha * rou
+        else
+            rou_new = rou;
+        end
+        dual_gap = dual_gap_new;
+        u = (rou/rou_new)*(u + x - v);
+        rou = rou_new;
+        i
+    end
+    
+    mkdir("../data/results/" + v_name + "/")
+    new_video_name = "../data/results/" + v_name + "/joint_mov.avi";
+    new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
+    open(new_video);
+    for i = 1:num_frame
+        writeVideo(new_video, [rescale(mov_raw(:, :, i)),...
+            rescale(mov_bic(:, :, i)), rescale(double(v_raw(:, :, i)))])
+    end
+    close(new_video);
+end
 
 function mov_raw = preprocess_video(video_name, num_frame)
     video_class = VideoReader(video_name);
