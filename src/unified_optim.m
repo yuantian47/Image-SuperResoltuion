@@ -1,9 +1,10 @@
 close all;
 clear;
 
-video_name_arr = ["gforeman", "gstennis"];
+video_name_arr = ["gforeman", "coastguard",
+    "gbicycle", "gbus", "gflower", "gstennis"];
 num_frame = 25;
-iter = 2;
+iter = 40;
 parfor i = 1:size(video_name_arr, 2)
     optimation_analysis(video_name_arr(i), num_frame, iter);
 end
