@@ -5,10 +5,44 @@ video_name = "gforeman";
 num_frame = 25;
 iter = 2;
 
-[mov_opt, mov_bic, mov_raw] = video_sr(video_name, num_frame, iter, 'PPP');
+[mov_red, mov_bic, mov_raw] = video_sr(video_name, num_frame, iter, 'RED');
+[mov_ppp, ~, ~] = video_sr(video_name, num_frame, iter, 'PPP');
 
-peaksnr_opt = psnr(double(mov_opt(:, :, :)), rescale(mov_raw(:, :, :)));
-peaksnr_bic = psnr(double(mov_bic(:, :, :)), rescale(mov_raw(:, :, :)));
+psnr_red = psnr(double(mov_red(:, :, :)), rescale(mov_raw(:, :, :)));
+psnr_ppp = psnr(double(mov_ppp(:, :, :)), rescale(mov_raw(:, :, :)));
+psnr_bic = psnr(double(mov_bic(:, :, :)), rescale(mov_raw(:, :, :)));
+ssim_red = ssim(double(mov_red(:, :, :)), rescale(mov_raw(:, :, :)));
+ssim_ppp = ssim(double(mov_ppp(:, :, :)), rescale(mov_raw(:, :, :)));
+ssim_bic = ssim(double(mov_bic(:, :, :)), rescale(mov_raw(:, :, :)));
+
+if ~exist("../data/results/" + video_name + int2str(iter) + "/", 'dir')
+   mkdir("../data/results/" + video_name + int2str(iter) + "/")
+end
+
+save("../data/results/" + video_name + int2str(iter) + "/red.mat",...
+    'mov_red');
+save("../data/results/" + video_name + int2str(iter) + "/ppp.mat",...
+    'mov_ppp');
+save("../data/results/" + video_name + int2str(iter) + "/bic.mat",...
+    'mov_bic');
+save("../data/results/" + video_name + int2str(iter) + "/raw.mat",...
+    'mov_raw');
+
+performance = [psnr_red psnr_ppp psnr_bic; ssim_red ssim_ppp ssim_bic];
+writematrix(performance, ...
+    "../data/results/" + video_name + int2str(iter) + "/performance.csv")
+
+new_video_name = "../data/results/" + ...
+    video_name + int2str(iter) + "/joint_mov" + ".avi";
+new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
+open(new_video);
+for i = 1:num_frame
+writeVideo(new_video, [rescale(mov_raw(:, :, i)),...
+    rescale(mov_bic(:, :, i)); rescale(double(mov_red(:, :, i))),...
+    rescale(double(mov_ppp(:, :, i)))])
+end
+close(new_video);
+
 
 function [v_raw, mov_bic, mov_raw] = video_sr(v_name, num_frame, iter, mth)
     % Get raw image
@@ -77,18 +111,6 @@ function [v_raw, mov_bic, mov_raw] = video_sr(v_name, num_frame, iter, mth)
         i
     end
     
-    if ~exist("../data/results/" + v_name + int2str(iter) + "/", 'dir')
-       mkdir("../data/results/" + v_name + int2str(iter) + "/")
-    end
-    new_video_name = "../data/results/" + ...
-        v_name + int2str(iter) + "/joint_mov_" + mth + ".avi";
-    new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
-    open(new_video);
-    for i = 1:num_frame
-        writeVideo(new_video, [rescale(mov_raw(:, :, i)),...
-            rescale(mov_bic(:, :, i)), rescale(double(v_raw(:, :, i)))])
-    end
-    close(new_video);
 end
 
 function mov_raw = preprocess_video(video_name, num_frame)
