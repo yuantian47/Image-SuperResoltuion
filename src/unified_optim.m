@@ -5,12 +5,12 @@ video_name = "gforeman";
 num_frame = 25;
 iter = 2;
 
-[mov_opt, mov_bic, mov_raw] = video_sr(video_name, num_frame, iter);
+[mov_opt, mov_bic, mov_raw] = video_sr(video_name, num_frame, iter, 'PPP');
 
 peaksnr_opt = psnr(double(mov_opt(:, :, :)), rescale(mov_raw(:, :, :)));
 peaksnr_bic = psnr(double(mov_bic(:, :, :)), rescale(mov_raw(:, :, :)));
 
-function [v_raw, mov_bic, mov_raw] = video_sr(v_name, num_frame, iter)
+function [v_raw, mov_bic, mov_raw] = video_sr(v_name, num_frame, iter, mth)
     % Get raw image
     video_name = "../data/noise_free/" + v_name + ".avi";
     mov_raw = preprocess_video(video_name, num_frame);
@@ -50,17 +50,19 @@ function [v_raw, mov_bic, mov_raw] = video_sr(v_name, num_frame, iter)
         x_raw = inverse_lex(x, size(mov_bic));
         u_raw = inverse_lex(u, size(mov_bic));
         v_old = v;
-
-        % PPP
-        % [~, v_raw] = VBM3D(x_raw + u_raw, sqrt(beta/rou));
-
-        % RED
-        z = inverse_lex(v, size(mov_bic));
-        for k = 1:2
-            [~, denoise] = VBM3D(z, sqrt(beta/rou));
-            z = (1/(beta + rou)) * (beta*denoise + rou * (x_raw + u_raw));
+        
+        if strcmp(mth, 'PPP')
+            % PPP
+            [~, v_raw] = VBM3D(x_raw + u_raw, sqrt(beta/rou));
+        else
+            % RED
+            z = inverse_lex(v, size(mov_bic));
+            for k = 1:2
+                [~, denoise] = VBM3D(z, sqrt(beta/rou));
+                z = (1/(beta + rou)) * (beta*denoise + rou * (x_raw + u_raw));
+            end
+            v_raw = z;
         end
-        v_raw = z;
 
         v = double(lex_transform(v_raw));
         dual_gap_new = norm(v - v_old)^2;
@@ -75,8 +77,11 @@ function [v_raw, mov_bic, mov_raw] = video_sr(v_name, num_frame, iter)
         i
     end
     
-    mkdir("../data/results/" + v_name + "/")
-    new_video_name = "../data/results/" + v_name + "/joint_mov.avi";
+    if ~exist("../data/results/" + v_name + int2str(iter) + "/", 'dir')
+       mkdir("../data/results/" + v_name + int2str(iter) + "/")
+    end
+    new_video_name = "../data/results/" + ...
+        v_name + int2str(iter) + "/joint_mov_" + mth + ".avi";
     new_video = VideoWriter(new_video_name, 'Uncompressed AVI');
     open(new_video);
     for i = 1:num_frame
