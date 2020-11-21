@@ -1,11 +1,10 @@
 close all;
 clear;
 
-video_name_arr = ["gforeman", "coastguard",
-    "gbicycle", "gbus", "gflower", "gstennis"];
+video_name_arr = ["gbicycle"];
 num_frame = 25;
 iter = 40;
-parfor i = 1:size(video_name_arr, 2)
+for i = 1:size(video_name_arr, 2)
     optimation_analysis(video_name_arr(i), num_frame, iter);
 end
 
@@ -61,8 +60,10 @@ function optimation_analysis(video_name, num_frame, iter)
     plot(frame_idx, psnr_red_arr, 'r-o', ...
         frame_idx, psnr_ppp_arr, 'g-*', ...
         frame_idx, psnr_bic_arr, 'b-^');
+    xlabel("Frame index")
+    ylabel("PSNR")
     legend('RED', 'PPP', 'Bicubic');
-    title(video_name + " PSNR");
+    title("Bicycle PSNR per frame");
     saveas(fig_psnr, "../data/results/" + ...
         video_name + int2str(iter) + "/psnr_plot.png")
     savefig(fig_psnr, "../data/results/" + ...
@@ -72,8 +73,10 @@ function optimation_analysis(video_name, num_frame, iter)
     plot(frame_idx, ssim_red_arr, 'r-o', ...
         frame_idx, ssim_ppp_arr, 'g-*', ...
         frame_idx, ssim_bic_arr, 'b-^');
+    xlabel("Frame index")
+    ylabel("SSIM")
     legend('RED', 'PPP', 'Bicubic');
-    title(video_name + " SSIM");
+    title("Bicycle SSIM per frame");
     saveas(fig_ssim, "../data/results/" + ...
         video_name + int2str(iter) + "/ssim_plot.png")
     savefig(fig_ssim, "../data/results/" + ...
@@ -93,8 +96,8 @@ function optimation_analysis(video_name, num_frame, iter)
         rescale(double(mov_ppp(:, :, i)))])
     end
     close(new_video);
-    close(fig_psnr);
-    close(fig_ssim);
+%     close(fig_psnr);
+%     close(fig_ssim);
 end
 
 
